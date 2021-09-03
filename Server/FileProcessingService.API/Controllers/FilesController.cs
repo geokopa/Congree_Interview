@@ -15,6 +15,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FileProcessingService.API.Controllers
@@ -67,12 +68,13 @@ namespace FileProcessingService.API.Controllers
         /// Returns statuses of file processing with specified SessionID
         /// </summary>
         /// <param name="sessionId">Process Uniqueue Identificator</param>
+        /// <param name="token"></param>
         /// <returns>Returns list of status messages</returns>
         [HttpGet]
         [Route("status-info/{sessionId}")]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<StatusMessage>))]
-        public async Task<IActionResult> StatusInfo([Required] string sessionId)
+        public async Task<IActionResult> StatusInfo([Required] string sessionId, CancellationToken token)
         {
             string statusAfter = string.Empty;
 
@@ -81,7 +83,7 @@ namespace FileProcessingService.API.Controllers
                 statusAfter = dateValue;
             }
 
-            var returnData = await _sender.Send(new GetStatusMessageBySessionQuery(statusAfter, sessionId));
+            var returnData = await _sender.Send(new GetStatusMessageBySessionQuery(statusAfter, sessionId), token);
 
             bool completed = returnData.Any(x => x.Completed);
             SetRetryHeader(completed);
@@ -96,6 +98,7 @@ namespace FileProcessingService.API.Controllers
         /// Get processed files data
         /// </summary>
         /// <param name="sessionId">Process Uniqueue Identifier</param>
+        /// <param name="token"></param>
         /// <returns>Returns list of processed files data</returns>
         /// <remarks>
         /// Data will include word duplication statistics and also elements found in parsed xml document.
@@ -104,9 +107,9 @@ namespace FileProcessingService.API.Controllers
         [Route("processed/{sessionId}")]
         [ProducesResponseType((int)HttpStatusCode.NotFound)]
         [ProducesResponseType((int)HttpStatusCode.OK, Type = typeof(IEnumerable<ProcessedFileContent>))]
-        public async Task<IActionResult> Processed(string sessionId)
+        public async Task<IActionResult> Processed(string sessionId, CancellationToken token)
         {
-            var processedFile = await _sender.Send(new GetProcessedFileContentQuery { SessionId = sessionId });
+            var processedFile = await _sender.Send(new GetProcessedFileContentQuery { SessionId = sessionId }, token);
 
             if (!processedFile.Any())
                 return NotFound();
